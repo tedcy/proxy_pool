@@ -50,12 +50,6 @@ PROXY_FETCHER = [
     "freeProxy03",
     "freeProxy04",
     "freeProxy05",
-    "freeProxy06",
-    "freeProxy07",
-    "freeProxy08",
-    "freeProxy09",
-    "freeProxy10",
-    "freeProxy11"
 ]
 
 # ############# proxy validator #################
@@ -76,7 +70,7 @@ MAX_FAIL_COUNT = 2
 PROXY_CHECK_COUNT = 10
 
 # proxyCheck时代理数量少于POOL_SIZE_MIN触发抓取
-POOL_SIZE_MIN = 20
+POOL_SIZE_MIN = 100
 
 # ############# proxy attributes #################
 # 是否启用代理地域属性
@@ -92,3 +86,32 @@ PROXY_REGION = True
 # Otherwise it will detect the timezone from the system automatically.
 
 TIMEZONE = "Asia/Shanghai"
+
+import time
+import threading
+import setting
+from handler.logHandler import LogHandler
+
+log = LogHandler('setting')
+
+def read_and_apply_config(file_path):
+    try:
+        with open(file_path, 'r') as file:
+            for line in file:
+                if line.strip():
+                    key, value = line.strip().split('=', 1)
+                    if key == 'POOL_SIZE_MIN':
+                        setting.POOL_SIZE_MIN = int(value)
+                        log.info(f"POOL_SIZE_MIN has been set to {setting.POOL_SIZE_MIN}")
+    except Exception as e:
+        log.info(f"An error occurred while reading the file: {e}")
+
+def periodic_file_reader():
+    file_path = "setting.conf"
+    def _reader():
+        while True:
+            read_and_apply_config(file_path)
+            time.sleep(10)
+
+    reader_thread = threading.Thread(target=_reader, daemon=True)
+    reader_thread.start()

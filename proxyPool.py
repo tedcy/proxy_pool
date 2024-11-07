@@ -14,7 +14,7 @@ __author__ = 'JHao'
 
 import click
 from helper.launcher import startServer, startScheduler
-from setting import BANNER, VERSION
+from setting import BANNER, VERSION, periodic_file_reader
 
 CONTEXT_SETTINGS = dict(help_option_names=['-h', '--help'])
 
@@ -40,4 +40,5 @@ def server():
 
 
 if __name__ == '__main__':
+    periodic_file_reader()
     cli()

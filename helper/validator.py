@@ -66,7 +66,7 @@ def httpTimeOutValidator(proxy):
     proxies = {"http": "http://{proxy}".format(proxy=proxy), "https": "https://{proxy}".format(proxy=proxy)}
 
     try:
-        r = get(conf.httpUrl, headers=HEADER, proxies=proxies, timeout=conf.verifyTimeout)
+        r = get(conf.httpUrl(), headers=HEADER, proxies=proxies, timeout=conf.verifyTimeout())
         content = r.text
         return '百度一下' in content and '登录' in content
     except Exception as e:
@@ -80,7 +80,7 @@ def httpsTimeOutValidator(proxy):
 
     proxies = {"http": "http://{proxy}".format(proxy=proxy), "https": "https://{proxy}".format(proxy=proxy)}
     try:
-        r = get(conf.httpsUrl, headers=HEADER, proxies=proxies, timeout=conf.verifyTimeout, verify=False)
+        r = get(conf.httpsUrl(), headers=HEADER, proxies=proxies, timeout=conf.verifyTimeout(), verify=False)
         content = r.text
         return '百度一下' in content and '登录' in content
     except Exception as e:

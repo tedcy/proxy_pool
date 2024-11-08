@@ -47,9 +47,9 @@ def __showVersion():
 
 def __showConfigure():
     conf = ConfigHandler()
-    log.info("ProxyPool configure HOST: %s" % conf.serverHost)
-    log.info("ProxyPool configure PORT: %s" % conf.serverPort)
-    log.info("ProxyPool configure PROXY_FETCHER: %s" % conf.fetchers)
+    log.info("ProxyPool configure HOST: %s" % conf.serverHost())
+    log.info("ProxyPool configure PORT: %s" % conf.serverPort())
+    log.info("ProxyPool configre PROXY_FETCHER: %s" % conf.fetchers)
 
 
 def __checkDBConfig():

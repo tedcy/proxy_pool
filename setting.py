@@ -59,15 +59,10 @@ HTTP_URL = "http://www.baidu.com"
 HTTPS_URL = "https://www.baidu.com"
 
 # 代理验证时超时时间
-VERIFY_TIMEOUT = 10
+VERIFY_TIMEOUT = 3
 
-# 近PROXY_CHECK_COUNT次校验中允许的最大失败次数,超过则剔除代理
-MAX_FAIL_COUNT = 2
-
-# 近PROXY_CHECK_COUNT次校验中允许的最大失败率,超过则剔除代理
-# MAX_FAIL_RATE = 0.1
-
-PROXY_CHECK_COUNT = 10
+# 允许的最大失败次数,超过则剔除代理
+MAX_FAIL_COUNT = 1
 
 # proxyCheck时代理数量少于POOL_SIZE_MIN触发抓取
 POOL_SIZE_MIN = 100
@@ -103,6 +98,12 @@ def read_and_apply_config(file_path):
                     if key == 'POOL_SIZE_MIN':
                         setting.POOL_SIZE_MIN = int(value)
                         log.info(f"POOL_SIZE_MIN has been set to {setting.POOL_SIZE_MIN}")
+                    if key == 'VERIFY_TIMEOUT':
+                        setting.VERIFY_TIMEOUT = int(value)
+                        log.info(f"VERIFY_TIMEOUT has been set to {setting.VERIFY_TIMEOUT}")
+                    if key == 'MAX_FAIL_COUNT':
+                        setting.MAX_FAIL_COUNT = int(value)
+                        log.info(f"MAX_FAIL_COUNT has been set to {setting.MAX_FAIL_COUNT}")
     except Exception as e:
         log.info(f"An error occurred while reading the file: {e}")
 

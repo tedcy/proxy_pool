@@ -50,7 +50,7 @@ class DoValidator(object):
                 proxy.fail_count -= 1
             proxy.https = True if https_r else False
             if work_type == "raw":
-                proxy.region = cls.regionGetter(proxy) if cls.conf.proxyRegion else ""
+                proxy.region = cls.regionGetter(proxy) if cls.conf.proxyRegion() else ""
         else:
             proxy.fail_count += 1
         return proxy
@@ -127,7 +127,7 @@ class _ThreadChecker(Thread):
             self.log.info('UseProxyCheck - {}: {} pass'.format(self.name, proxy.proxy.ljust(23)))
             self.proxy_handler.put(proxy)
         else:
-            if proxy.fail_count > self.conf.maxFailCount:
+            if proxy.fail_count > self.conf.maxFailCount():
                 self.log.info('UseProxyCheck - {}: {} fail, count {} delete'.format(self.name,
                                                                                     proxy.proxy.ljust(23),
                                                                                     proxy.fail_count))

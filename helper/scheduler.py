@@ -37,7 +37,7 @@ def __runProxyFetch():
 def __runProxyCheck():
     proxy_handler = ProxyHandler()
     proxy_queue = Queue()
-    if proxy_handler.db.getCount().get("total", 0) < proxy_handler.conf.poolSizeMin:
+    if proxy_handler.db.getCount().get("total", 0) < proxy_handler.conf.poolSizeMin():
         __runProxyFetch()
     for proxy in proxy_handler.getAll():
         proxy_queue.put(proxy)
@@ -47,7 +47,7 @@ def __runProxyCheck():
 def runScheduler():
     __runProxyFetch()
 
-    timezone = ConfigHandler().timezone
+    timezone = ConfigHandler().timezone()
     scheduler_log = LogHandler("scheduler")
     scheduler = BlockingScheduler(logger=scheduler_log, timezone=timezone)
 

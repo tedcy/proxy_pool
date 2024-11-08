@@ -94,7 +94,16 @@ class ProxyFetcher(object):
 
     @staticmethod
     def freeProxy04():
-        return ProxyFetcher.freeProxy0405('https://www.kuaidaili.com/free/inha/{}/') 
+        #return ProxyFetcher.freeProxy0405('https://www.kuaidaili.com/free/inha/{}/') 
+        urls = [
+            'https://raw.githubusercontent.com/parserpp/ip_ports/main/proxyinfo.txt'
+        ]
+        request = WebRequest()
+        for url in urls:
+            r = request.get(url, timeout=20)
+            for proxy in r.text.split('\n'):
+                if proxy:
+                    yield proxy
 
     @staticmethod
     def freeProxy05():

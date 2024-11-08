@@ -24,7 +24,7 @@ class ProxyHandler(object):
     def __init__(self):
         self.conf = ConfigHandler()
         self.db = DbClient(self.conf.dbConn)
-        self.db.changeTable(self.conf.tableName)
+        self.db.changeTable(self.conf.tableName())
 
     def get(self, https=False):
         """

@@ -105,7 +105,7 @@ def getCount():
 
 def runFlask():
     if platform.system() == "Windows":
-        app.run(host=conf.serverHost, port=conf.serverPort)
+        app.run(host=conf.serverHost(), port=conf.serverPort())
     else:
         import gunicorn.app.base
 
@@ -126,7 +126,7 @@ def runFlask():
                 return self.application
 
         _options = {
-            'bind': '%s:%s' % (conf.serverHost, conf.serverPort),
+            'bind': '%s:%s' % (conf.serverHost(), conf.serverPort()),
             'workers': 4,
             'accesslog': '-',  # log to stdout
             'access_log_format': '%(h)s %(l)s %(t)s "%(r)s" %(s)s "%(a)s"'

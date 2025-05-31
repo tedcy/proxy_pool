@@ -19,6 +19,7 @@ from apscheduler.executors.pool import ProcessPoolExecutor
 from util.six import Queue
 from helper.fetch import Fetcher
 from helper.check import Checker
+from helper.memory import MemoryChecker
 from handler.logHandler import LogHandler
 from handler.proxyHandler import ProxyHandler
 from handler.configHandler import ConfigHandler
@@ -45,6 +46,10 @@ def __runProxyCheck():
 
 
 def runScheduler():
+    # 启动内存监控
+    memory_checker = MemoryChecker(top=10, interval=300)  # 每5分钟自动dump一次内存统计
+    memory_checker.start()
+
     __runProxyFetch()
 
     timezone = ConfigHandler().timezone()

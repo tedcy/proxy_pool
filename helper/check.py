@@ -92,7 +92,11 @@ class _ThreadChecker(Thread):
     def __init__(self, work_type, target_queue, thread_name):
         Thread.__init__(self, name=thread_name)
         self.work_type = work_type
-        self.log = LogHandler("checker")
+        # 根据work_type使用不同的日志处理器，将raw checker和use checker的日志划分到不同的文件
+        if work_type == "raw":
+            self.log = LogHandler("raw_checker")
+        else:
+            self.log = LogHandler("use_checker")
         self.proxy_handler = ProxyHandler()
         self.target_queue = target_queue
         self.conf = ConfigHandler()
@@ -147,12 +151,15 @@ def Checker(tp, queue):
     :return:
     """
     thread_list = list()
-    for index in range(20):
+    count = 20
+    if tp == "raw":
+        count = 200
+    for index in range(count):
         thread_list.append(_ThreadChecker(tp, queue, "thread_%s" % str(index).zfill(2)))
 
     for thread in thread_list:
         thread.setDaemon(True)
         thread.start()
-
+    
     for thread in thread_list:
         thread.join()

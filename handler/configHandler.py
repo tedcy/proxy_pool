@@ -54,9 +54,6 @@ class ConfigHandler(withMetaclass(Singleton)):
     def maxFailCount(self):
         return int(setting.MAX_FAIL_COUNT)
 
-    def poolSizeMin(self):
-        return int(setting.POOL_SIZE_MIN)
-
     def proxyRegion(self):
         return bool(setting.PROXY_REGION)
 

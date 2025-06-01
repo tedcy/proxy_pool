@@ -64,9 +64,6 @@ VERIFY_TIMEOUT = 3
 # 允许的最大失败次数,超过则剔除代理
 MAX_FAIL_COUNT = 1
 
-# proxyCheck时代理数量少于POOL_SIZE_MIN触发抓取
-POOL_SIZE_MIN = 100
-
 # ############# proxy attributes #################
 # 是否启用代理地域属性
 PROXY_REGION = True

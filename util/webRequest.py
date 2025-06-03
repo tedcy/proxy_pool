@@ -26,9 +26,13 @@ requests.packages.urllib3.disable_warnings()
 class WebRequest(object):
     name = "web_request"
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, setSessionUrl = None, *args, **kwargs):
         self.log = LogHandler(self.name, file=False)
         self.response = Response()
+        if setSessionUrl:
+            self.session = requests.Session()
+            # 第一次请求，服务器返回 Set-Cookie
+            self.response = self.session.get(setSessionUrl, timeout=5, *args, **kwargs)
 
     @property
     def user_agent(self):
@@ -37,14 +41,21 @@ class WebRequest(object):
         :return:
         """
         ua_list = [
-            'Mozilla/5.0 (Windows NT 6.1; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/30.0.1599.101',
-            'Mozilla/5.0 (Windows NT 6.1; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/38.0.2125.122',
-            'Mozilla/5.0 (Windows NT 6.1; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/39.0.2171.71',
-            'Mozilla/5.0 (Windows NT 6.1; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/39.0.2171.95',
-            'Mozilla/5.0 (Windows NT 6.1; WOW64) AppleWebKit/537.1 (KHTML, like Gecko) Chrome/21.0.1180.71',
-            'Mozilla/4.0 (compatible; MSIE 6.0; Windows NT 5.1; SV1; QQDownload 732; .NET4.0C; .NET4.0E)',
-            'Mozilla/5.0 (Windows NT 5.1; U; en; rv:1.8.1) Gecko/20061208 Firefox/2.0.0 Opera 9.50',
-            'Mozilla/5.0 (Windows NT 6.1; WOW64; rv:34.0) Gecko/20100101 Firefox/34.0',
+            'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
+            'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.114 Safari/537.36',
+            'Mozilla/5.0 (Windows NT 10.0; Win64; x86_64; rv:89.0) Gecko/20100101 Firefox/89.0',
+            'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/14.1.2 Safari/605.1.15',
+            'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Firefox/89.0',
+            'Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:88.0) Gecko/20100101 Firefox/88.0',
+            'Mozilla/5.0 (Macintosh; Intel Mac OS X 11_6) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/14.1.1 Safari/605.1.15',
+            'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/92.0.4515.107 Safari/537.36',
+            'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/535.11 (KHTML, like Gecko) Chrome/90.0.4472.114 Safari/537.3',
+            'Mozilla/5.0 (compatible; MSIE 9.0; Windows NT 6.1; Trident/5.0)',
+            'Opera/9.80 (Windows NT 6.1; U; en) Presto/2.10.289 Version/12.02',
+            'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/93.0.4577.82 Safari/537.36',
+            'Mozilla/5.0 (Linux; Android 10; SM-G981B) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.120 Mobile Safari/537.36',
+            'Mozilla/5.0 (iPhone; CPU iPhone OS 14_6 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/14.0 Mobile/15E148 Safari/604.1',
+            'Mozilla/5.0 (Windows NT 6.1; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/92.0.4515.131 Safari/537.36'
         ]
         return random.choice(ua_list)
 
@@ -94,6 +105,45 @@ class WebRequest(object):
     def text(self):
         return self.response.text
 
+    # 需请求多个链接，复合使用：request = WebRequest(url)
+    #                     request = request.session(url, header, timeout)
+    # 只请求单个链接，WebRequest().get(url, header, timeout)
+    def Session(self, url, header=None, retry_time=3, retry_interval=5, timeout=5, *args, **kwargs):
+        """
+        get method
+        :param url: target url
+        :param header: headers
+        :param retry_time: retry time
+        :param retry_interval: retry interval
+        :param timeout: network timeout
+        :return:
+        """
+        headers = self.header
+        if header and isinstance(header, dict):
+            headers.update(header)
+        while True:
+            try:
+                if hasattr(self, 'session'):
+                    # 携带数据
+                    self.response = self.session.get(url, timeout=timeout, *args, **kwargs)
+                    return self
+                else:
+                    session = requests.Session()
+                    # 第一次请求，服务器返回 Set-Cookie
+                    session.get(url, headers=headers, timeout=timeout, *args, **kwargs)
+                    # 携带数据
+                    self.response = session.get(url, timeout=timeout, *args, **kwargs)
+                    return self
+            except Exception as e:
+                self.log.error("requests: %s error: %s" % (url, str(e)))
+                retry_time -= 1
+                if retry_time <= 0:
+                    resp = Response()
+                    resp.status_code = 200
+                    return self
+                self.log.info("retry %s second after" % retry_interval)
+                time.sleep(retry_interval)
+
     @property
     def json(self):
         try:
@@ -101,4 +151,3 @@ class WebRequest(object):
         except Exception as e:
             self.log.error(str(e))
             return {}
-

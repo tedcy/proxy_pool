@@ -16,6 +16,7 @@ import re
 from requests import get
 from util.six import withMetaclass
 from util.singleton import Singleton
+from util.webRequest import WebRequest
 from handler.configHandler import ConfigHandler
 
 from handler.logHandler import LogHandler
@@ -24,10 +25,12 @@ log = LogHandler('validator')
 
 conf = ConfigHandler()
 
-HEADER = {'User-Agent': 'Mozilla/5.0 (Windows NT 6.1; WOW64; rv:34.0) Gecko/20100101 Firefox/34.0',
+HEADER = {'User-Agent': WebRequest().user_agent,
           'Accept': '*/*',
           'Connection': 'keep-alive',
           'Accept-Language': 'zh-CN,zh;q=0.8'}
+#加上user_agent会变成桌面端响应
+HEADER = {}
 
 IP_REGEX = re.compile(r"(.*:.*@)?\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}:\d{1,5}")
 
@@ -63,14 +66,18 @@ def formatValidator(proxy):
 def httpTimeOutValidator(proxy):
     """ http检测超时 """
 
-    proxies = {"http": "http://{proxy}".format(proxy=proxy), "https": "https://{proxy}".format(proxy=proxy)}
+    proxies = {"http": "http://{proxy}".format(proxy=proxy)}
 
     try:
         r = get(conf.httpUrl(), headers=HEADER, proxies=proxies, timeout=conf.verifyTimeout())
-        content = r.text
-        return '百度一下' in content and '登录' in content
+        content = r.content.decode('utf-8', errors='ignore')
+        ok = '百度一下' in content and '登录' in content
+        if ok:
+            return True
+        log.debug(f"Response False content for {proxy}: {r.text[0: 100]}...")
+        return False
     except Exception as e:
-        log.info(e)
+        log.error(f"Error occurred while validating proxy {proxy}: {str(e)}")
         return False
 
 
@@ -78,13 +85,17 @@ def httpTimeOutValidator(proxy):
 def httpsTimeOutValidator(proxy):
     """https检测超时"""
 
-    proxies = {"http": "http://{proxy}".format(proxy=proxy), "https": "https://{proxy}".format(proxy=proxy)}
+    proxies = {"https": "https://{proxy}".format(proxy=proxy)}
     try:
         r = get(conf.httpsUrl(), headers=HEADER, proxies=proxies, timeout=conf.verifyTimeout(), verify=False)
-        content = r.text
-        return '百度一下' in content and '登录' in content
+        content = r.content.decode('utf-8', errors='ignore')
+        ok = '百度一下' in content and '登录' in content
+        if ok:
+            return True
+        log.debug(f"Response False content for {proxy}: {r.text[0: 100]}...")
+        return False
     except Exception as e:
-        log.info(e)
+        log.error(f"Error occurred while validating proxy {proxy}: {str(e)}")
         return False
 
 

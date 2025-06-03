@@ -54,21 +54,19 @@ class ProxyFetcher(object):
             'https://www.proxy-list.download/api/v1/get?type=https',
             'https://raw.githubusercontent.com/shiftytr/proxy-list/master/proxy.txt'
         ]
-        request = WebRequest()
         for url in urls:
-            r = request.get(url, timeout=20)
+            r = WebRequest().get(url, timeout=20)
             for proxy in r.text.split('\n'):
                 if proxy:
                     yield proxy
 
     @staticmethod
     def freeProxy0405(daili_url):
-        request = WebRequest()
         for i in range(1, 20):
             sleep(1)
             try:
                 url = daili_url.format(i)
-                r = request.get(url, timeout=20)
+                r = WebRequest().get(url, timeout=20)
 
                 # 假设网页内容中有一段包含 JSON 格式的 fpsList 数据
                 # 使用 BeautifulSoup 解析网页
@@ -98,9 +96,8 @@ class ProxyFetcher(object):
         urls = [
             'https://raw.githubusercontent.com/parserpp/ip_ports/main/proxyinfo.txt'
         ]
-        request = WebRequest()
         for url in urls:
-            r = request.get(url, timeout=20)
+            r = WebRequest().get(url, timeout=20)
             for proxy in r.text.split('\n'):
                 if proxy:
                     yield proxy
@@ -109,67 +106,27 @@ class ProxyFetcher(object):
     def freeProxy05():
         return ProxyFetcher.freeProxy0405('https://www.jiliuip.com/free/{}/')
 
-    # @staticmethod
-    # def wallProxy01():
-    #     """
-    #     PzzQz https://pzzqz.com/
-    #     """
-    #     from requests import Session
-    #     from lxml import etree
-    #     session = Session()
-    #     try:
-    #         index_resp = session.get("https://pzzqz.com/", timeout=20, verify=False).text
-    #         x_csrf_token = re.findall('X-CSRFToken": "(.*?)"', index_resp)
-    #         if x_csrf_token:
-    #             data = {"http": "on", "ping": "3000", "country": "cn", "ports": ""}
-    #             proxy_resp = session.post("https://pzzqz.com/", verify=False,
-    #                                       headers={"X-CSRFToken": x_csrf_token[0]}, json=data).json()
-    #             tree = etree.HTML(proxy_resp["proxy_html"])
-    #             for tr in tree.xpath("//tr"):
-    #                 ip = "".join(tr.xpath("./td[1]/text()"))
-    #                 port = "".join(tr.xpath("./td[2]/text()"))
-    #                 yield "%s:%s" % (ip, port)
-    #     except Exception as e:
-    #         print(e)
-
-    # @staticmethod
-    # def freeProxy10():
-    #     """
-    #     墙外网站 cn-proxy
-    #     :return:
-    #     """
-    #     urls = ['http://cn-proxy.com/', 'http://cn-proxy.com/archives/218']
-    #     request = WebRequest()
-    #     for url in urls:
-    #         r = request.get(url, timeout=10)
-    #         proxies = re.findall(r'<td>(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})</td>[\w\W]<td>(\d+)</td>', r.text)
-    #         for proxy in proxies:
-    #             yield ':'.join(proxy)
-
-    # @staticmethod
-    # def freeProxy11():
-    #     """
-    #     https://proxy-list.org/english/index.php
-    #     :return:
-    #     """
-    #     urls = ['https://proxy-list.org/english/index.php?p=%s' % n for n in range(1, 10)]
-    #     request = WebRequest()
-    #     import base64
-    #     for url in urls:
-    #         r = request.get(url, timeout=10)
-    #         proxies = re.findall(r"Proxy\('(.*?)'\)", r.text)
-    #         for proxy in proxies:
-    #             yield base64.b64decode(proxy).decode()
-
-    # @staticmethod
-    # def freeProxy12():
-    #     urls = ['https://list.proxylistplus.com/Fresh-HTTP-Proxy-List-1']
-    #     request = WebRequest()
-    #     for url in urls:
-    #         r = request.get(url, timeout=10)
-    #         proxies = re.findall(r'<td>(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})</td>[\s\S]*?<td>(\d+)</td>', r.text)
-    #         for proxy in proxies:
-    #             yield ':'.join(proxy)
+    @staticmethod
+    def customProxy01():
+        """
+        返回格式为 ip:port，仅获取HTTP和HTTPS代理
+        """
+        urls = [
+            'https://raw.githubusercontent.com/fyvri/fresh-proxy-list/archive/storage/classic/http.txt',
+            'https://raw.githubusercontent.com/fyvri/fresh-proxy-list/archive/storage/classic/https.txt',
+            'https://raw.githubusercontent.com/proxifly/free-proxy-list/refs/heads/main/proxies/protocols/http/data.txt',
+            'https://www.proxy-list.download/api/v1/get?type=http',
+            'https://api.openproxylist.xyz/http.txt',
+        ]
+        for url in urls:
+            r = WebRequest().get(url, timeout=20)
+            for proxy in r.text.split('\n'):
+                if proxy:
+                    if proxy.startswith("http://"):
+                        proxy = proxy[len("http://"):]
+                    elif proxy.startswith("https://"):
+                        proxy = proxy[len("https://"):]
+                    yield proxy
 
 
 if __name__ == '__main__':

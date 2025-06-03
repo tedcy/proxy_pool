@@ -17,6 +17,7 @@ __author__ = 'JHao'
 from util.six import Empty
 from threading import Thread
 from datetime import datetime
+from requests import get
 from util.webRequest import WebRequest
 from handler.logHandler import LogHandler
 from helper.validator import ProxyValidator
@@ -28,6 +29,24 @@ class DoValidator(object):
     """ 执行校验 """
 
     conf = ConfigHandler()
+    log = LogHandler("anonymous")
+
+    @classmethod
+    def anonymousValidator(cls, proxy):
+        # 检测代理匿名级别
+        anonymous_level = cls.anonymous(proxy.proxy, proxy.https)
+        # 只保留匿名代理和高匿代理，过滤掉透明代理
+        if anonymous_level == 0:
+            proxy.anonymous = "透明代理"
+            return False
+        if anonymous_level == 1:
+            proxy.anonymous = "匿名代理"
+            return True
+        if anonymous_level == 2:
+            proxy.anonymous = "高匿代理"
+            return True
+        proxy.anonymous = "未知"
+        return False
 
     @classmethod
     def validator(cls, proxy, work_type):
@@ -40,19 +59,27 @@ class DoValidator(object):
             Proxy Object
         """
         http_r = cls.httpValidator(proxy)
-        https_r = False if not http_r else cls.httpsValidator(proxy)
+        anonymous_r = False
+        if http_r:
+            proxy.https = cls.httpsValidator(proxy)
+            anonymous_r = cls.anonymousValidator(proxy)
 
+        cls.log.info("{}: {} - {} - {}".format(
+            proxy.proxy.ljust(23),
+            proxy.anonymous,
+            http_r, anonymous_r
+        ))
+        
         proxy.check_count += 1
         proxy.last_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-        proxy.last_status = True if http_r else False
-        if http_r:
+        
+        if anonymous_r:
             if proxy.fail_count > 0:
                 proxy.fail_count -= 1
-            proxy.https = True if https_r else False
-            if work_type == "raw":
-                proxy.region = cls.regionGetter(proxy) if cls.conf.proxyRegion() else ""
+            proxy.last_status = True
         else:
             proxy.fail_count += 1
+            proxy.last_status = False
         return proxy
 
     @classmethod
@@ -77,13 +104,34 @@ class DoValidator(object):
         return True
 
     @classmethod
-    def regionGetter(cls, proxy):
+    def anonymous(cls, proxy_addr, https=False, timeout=5.0):
+        """
+        判断代理的匿名等级：
+        0 = Transparent（透明代理）
+        1 = Anonymous（匿名代理）
+        2 = Elite（高匿代理）
+       -1 = Error（检测失败）
+        """
+        scheme = 'https' if https else 'http'
+        url = f'{scheme}://httpbin.org/ip'
+        proxies = {scheme: f"{scheme}://{proxy_addr}"}
         try:
-            url = 'https://searchplugin.csdn.net/api/v1/ip/get?ip=%s' % proxy.proxy.split(':')[0]
-            r = WebRequest().get(url=url, retry_time=1, timeout=2).json
-            return r['data']['address']
-        except:
-            return 'error'
+            r = get(url, proxies=proxies, timeout=timeout)
+            if r.status_code != 200:
+                return -1
+            origin = r.json().get('origin', '')
+            headers = dict((k.lower(), v) for k, v in r.headers.items())
+            # 判断真实IP是否泄露
+            if ',' in origin:
+                return 0  # 透明代理
+            # 判断是否存在代理标识头
+            proxy_headers = ['via', 'proxy-connection', 'x-forwarded-for', 'forwarded']
+            if any(h in headers for h in proxy_headers):
+                return 1  # 匿名代理
+            return 2  # 高匿代理
+        except Exception as e:
+            print(f"anonymousValidator Error: {str(e)}")
+            return -1
 
 
 class _ThreadChecker(Thread):

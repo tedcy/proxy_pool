@@ -54,9 +54,6 @@ class ConfigHandler(withMetaclass(Singleton)):
     def maxFailCount(self):
         return int(setting.MAX_FAIL_COUNT)
 
-    def proxyRegion(self):
-        return bool(setting.PROXY_REGION)
-
     def timezone(self):
         return setting.TIMEZONE
 

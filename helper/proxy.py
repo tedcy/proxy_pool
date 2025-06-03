@@ -17,7 +17,7 @@ import json
 
 class Proxy(object):
 
-    def __init__(self, proxy, fail_count=0, region="", anonymous="",
+    def __init__(self, proxy, fail_count=0, region="", anonymous="非HTTP代理",
                  source="", check_count=0, last_status="", last_time="", https=False):
         self._proxy = proxy
         self._fail_count = fail_count
@@ -129,6 +129,10 @@ class Proxy(object):
     @region.setter
     def region(self, value):
         self._region = value
+        
+    @anonymous.setter
+    def anonymous(self, value):
+        self._anonymous = value
 
     def add_source(self, source_str):
         if source_str:

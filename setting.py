@@ -60,7 +60,7 @@ HTTP_URL = "http://www.baidu.com"
 HTTPS_URL = "https://www.baidu.com"
 
 # 代理验证时超时时间
-VERIFY_TIMEOUT = 3
+VERIFY_TIMEOUT = 10
 
 # 允许的最大失败次数,超过则剔除代理
 MAX_FAIL_COUNT = 1

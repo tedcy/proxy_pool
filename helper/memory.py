@@ -1,10 +1,11 @@
 import tracemalloc
 import threading
 import time
+import gc
 from handler.logHandler import LogHandler
 
 class MemoryChecker:
-    def __init__(self, top=10, traceback_limit=25, interval=300):
+    def __init__(self, top=10, traceback_limit=25, interval=60):
         """
         初始化内存统计类
         :param top: 输出内存占用最多的前top个位置
@@ -17,6 +18,7 @@ class MemoryChecker:
         self.log = LogHandler("memory")
         self.started = False
         self._thread = None
+        self._gcThread = None
         self._stop_event = threading.Event()
 
     def start(self):
@@ -27,7 +29,9 @@ class MemoryChecker:
             self.log.info("MemoryChecker started.")
             self._stop_event.clear()
             self._thread = threading.Thread(target=self._periodic_dump, daemon=True)
+            self._gcThread = threading.Thread(target=self._gc, daemon=True)
             self._thread.start()
+            self._gcThread.start()
 
     def stop(self):
         """停止内存统计并停止自动dump线程"""
@@ -61,3 +65,10 @@ class MemoryChecker:
             self.log.info("自动定时dump内存统计开始")
             self.dump_top_stats()
             self.log.info("自动定时dump内存统计结束")
+    
+    def _gc(self):
+        """后台线程定时执行垃圾回收"""
+        while not self._stop_event.wait(1):
+            self.log.info("自动执行垃圾回收开始")
+            gc.collect()
+            self.log.info("自动执行垃圾回收结束")

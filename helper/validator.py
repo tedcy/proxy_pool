@@ -8,12 +8,13 @@
 -------------------------------------------------
    Change Activity:
                    2023/03/10: 支持带用户认证的代理格式 username:password@ip:port
+                   2025/06/03: 转换为基于aiohttp的异步代码
 -------------------------------------------------
 """
 __author__ = 'JHao'
 
 import re
-from requests import get
+import aiohttp
 from util.six import withMetaclass
 from util.singleton import Singleton
 from util.webRequest import WebRequest
@@ -25,12 +26,9 @@ log = LogHandler('validator')
 
 conf = ConfigHandler()
 
-HEADER = {'User-Agent': WebRequest().user_agent,
+HEADER = {'User-Agent': 'curl/7.61.1',
           'Accept': '*/*',
-          'Connection': 'keep-alive',
-          'Accept-Language': 'zh-CN,zh;q=0.8'}
-#加上user_agent会变成桌面端响应
-HEADER = {}
+          'Connection': 'keep-alive'}
 
 IP_REGEX = re.compile(r"(.*:.*@)?\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}:\d{1,5}")
 
@@ -62,44 +60,41 @@ def formatValidator(proxy):
     return True if IP_REGEX.fullmatch(proxy) else False
 
 
-@ProxyValidator.addHttpValidator
-def httpTimeOutValidator(proxy):
-    """ http检测超时 """
-
-    proxies = {"http": "http://{proxy}".format(proxy=proxy)}
+async def validateProxy(proxy, url, proxy_type='http', ssl=False):
+    """通用代理验证函数"""
+    proxy_url = f"{proxy_type}://{proxy}"
+    timeout = conf.verifyTimeout()
 
     try:
-        r = get(conf.httpUrl(), headers=HEADER, proxies=proxies, timeout=conf.verifyTimeout())
-        content = r.content.decode('utf-8', errors='ignore')
-        ok = '百度一下' in content and '登录' in content
-        if ok:
-            return True
-        log.debug(f"Response False content for {proxy}: {r.text[0: 100]}...")
-        return False
+        async with aiohttp.ClientSession() as session:
+            async with session.get(url, headers=HEADER, proxy=proxy_url,
+                                   timeout=aiohttp.ClientTimeout(total=timeout), ssl=ssl) as response:
+                if response.status != 200:
+                    log.debug(f"Proxy {proxy} response status: {response.status}")
+                    return False
+
+                content_bytes = await response.content.read(3000)
+                content = content_bytes.decode('utf-8', errors='ignore')
+
+                ok = '百度一下' in content and '登录' in content
+                if ok:
+                    log.debug(f"Response True content for {proxy}: {len(content_bytes)} bytes, {content[:320]}...")
+                    return True
+
+                log.debug(f"Response False content for {proxy}: {len(content_bytes)} bytes, {content[:320]}...")
+                return False
     except Exception as e:
-        log.error(f"Error occurred while validating proxy {proxy}: {str(e)}")
+        log.error(f"Error occurred while validating proxy {proxy}: {type(e).__name__}: {str(e)}")
         return False
+
+
+@ProxyValidator.addHttpValidator
+async def httpTimeOutValidator(proxy):
+    """http检测超时"""
+    return await validateProxy(proxy, conf.httpUrl(), proxy_type='http', ssl=False)
 
 
 @ProxyValidator.addHttpsValidator
-def httpsTimeOutValidator(proxy):
+async def httpsTimeOutValidator(proxy):
     """https检测超时"""
-
-    proxies = {"https": "https://{proxy}".format(proxy=proxy)}
-    try:
-        r = get(conf.httpsUrl(), headers=HEADER, proxies=proxies, timeout=conf.verifyTimeout(), verify=False)
-        content = r.content.decode('utf-8', errors='ignore')
-        ok = '百度一下' in content and '登录' in content
-        if ok:
-            return True
-        log.debug(f"Response False content for {proxy}: {r.text[0: 100]}...")
-        return False
-    except Exception as e:
-        log.error(f"Error occurred while validating proxy {proxy}: {str(e)}")
-        return False
-
-
-@ProxyValidator.addHttpValidator
-def customValidatorExample(proxy):
-    """自定义validator函数，校验代理是否可用, 返回True/False"""
-    return True
+    return await validateProxy(proxy, conf.httpsUrl(), proxy_type='https', ssl=False)

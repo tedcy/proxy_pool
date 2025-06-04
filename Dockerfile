@@ -19,6 +19,11 @@ RUN apk add musl-dev gcc libxml2-dev libxslt-dev vim && \
 
 COPY . .
 
+RUN echo "set mouse=" >> /root/.vimrc \
+    && echo "syntax on" >> /root/.vimrc \
+    && echo "set number" >> /root/.vimrc \
+    && echo "set encoding=utf-8" >> /root/.vimrc
+
 EXPOSE 5010
 
 ENTRYPOINT [ "sh", "start.sh" ]

@@ -60,10 +60,10 @@ HTTP_URL = "http://www.baidu.com"
 HTTPS_URL = "https://www.baidu.com"
 
 # 代理验证时超时时间
-VERIFY_TIMEOUT = 10
+VERIFY_TIMEOUT = 5
 
 # 允许的最大失败次数,超过则剔除代理
-MAX_FAIL_COUNT = 1
+MAX_FAIL_COUNT = 2
 
 # ############# proxy attributes #################
 # 是否启用代理地域属性

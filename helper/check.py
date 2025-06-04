@@ -34,7 +34,7 @@ class DoValidator(object):
     @classmethod
     async def anonymousValidator(cls, proxy):
         # 检测代理匿名级别
-        anonymous_level = await cls.anonymous(proxy.proxy, proxy.https)
+        anonymous_level = await cls.anonymous(proxy.proxy)
         # 只保留匿名代理和高匿代理，过滤掉透明代理
         if anonymous_level == 0:
             proxy.anonymous = "透明代理"
@@ -61,8 +61,15 @@ class DoValidator(object):
         http_r = await cls.httpValidator(proxy)
         anonymous_r = False
         if http_r:
-            proxy.https = await cls.httpsValidator(proxy)
-            anonymous_r = await cls.anonymousValidator(proxy)
+            # 别检测https了，用不上，浪费时间
+            # proxy.https = await cls.httpsValidator(proxy)
+            proxy.https = False
+            if proxy.anonymous == '非HTTP代理' or proxy.anonymous == "未知":
+                anonymous_r = await cls.anonymousValidator(proxy)
+            else :
+                # 只可能是透明，匿名，高匿
+                if proxy.anonymous in ["匿名代理", "高匿代理"]:
+                    anonymous_r = True
 
         cls.log.info("{}: {} - {} - {}".format(
             proxy.proxy.ljust(23),
@@ -73,9 +80,10 @@ class DoValidator(object):
         proxy.check_count += 1
         proxy.last_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         
+        # 成功一次就重置失败计数
         if anonymous_r:
             if proxy.fail_count > 0:
-                proxy.fail_count -= 1
+                proxy.fail_count = 0
             proxy.last_status = True
         else:
             proxy.fail_count += 1
@@ -104,7 +112,7 @@ class DoValidator(object):
         return True
 
     @classmethod
-    async def anonymous(cls, proxy_addr, https=False):
+    async def anonymous(cls, proxy_addr):
         """
         判断代理的匿名等级：
         0 = Transparent（透明代理）
@@ -112,14 +120,13 @@ class DoValidator(object):
         2 = Elite（高匿代理）
        -1 = Error（检测失败）
         """
-        scheme = 'https' if https else 'http'
-        url = f'{scheme}://httpbin.org/ip'
-        proxy_url = f"{scheme}://{proxy_addr}"
+        proxy_url = f"http://{proxy_addr}"
         
         try:
             async with aiohttp.ClientSession() as session:
-                async with session.get(url, proxy=proxy_url, timeout=aiohttp.ClientTimeout(total=cls.conf.verifyTimeout())) as response:
+                async with session.get('http://httpbin.org/ip', proxy=proxy_url, timeout=aiohttp.ClientTimeout(total=cls.conf.verifyTimeout())) as response:
                     if response.status != 200:
+                        cls.log.error(f"anonymousValidator: Proxy {proxy_addr} returned status {response.status}")
                         return -1
                     
                     data = await response.json()
@@ -137,7 +144,7 @@ class DoValidator(object):
                     
                     return 2  # 高匿代理
         except Exception as e:
-            print(f"anonymousValidator Error: {str(e)}")
+            cls.log.error(f"anonymousValidator Error occurred while validating proxy {proxy_addr}: {type(e).__name__}: {str(e)}")
             return -1
 
 
@@ -186,6 +193,15 @@ class _AsyncChecker:
                     proxy.proxy.ljust(23), proxy.fail_count))
                 self.proxy_handler.put(proxy)
 
+async def safe_check_proxy(proxy, checker, timeout):
+    log = LogHandler("safe_checker")
+    try:
+        await asyncio.wait_for(checker.check_proxy(proxy), timeout=timeout)
+    except asyncio.TimeoutError:
+        log.error(f"Proxy {proxy.proxy} timed out after {timeout} seconds")
+    except Exception as e:
+        log.error(f"Proxy {proxy.proxy} raised exception: {repr(e)}")
+
 async def Checker(tp, proxy_queue):
     checker = _AsyncChecker(tp, proxy_queue)
     concurrency = 1000 if tp == "raw" else 20
@@ -205,5 +221,5 @@ async def Checker(tp, proxy_queue):
             # 队列为空，退出循环
             break
 
-        tasks = [checker.check_proxy(proxy) for proxy in batch]
+        tasks = [safe_check_proxy(proxy, checker, 15) for proxy in batch]
         await asyncio.gather(*tasks)

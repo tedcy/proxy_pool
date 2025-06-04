@@ -75,13 +75,17 @@ async def validateProxy(proxy, url, proxy_type='http', ssl=False):
 
                 content_bytes = await response.content.read(3000)
                 content = content_bytes.decode('utf-8', errors='ignore')
+                if len(content_bytes) < 1000:
+                    log.debug(f"Response False content for {proxy}: {len(content_bytes)} bytes too short, {content}...")
+                    return False
 
-                ok = '百度一下' in content and '登录' in content
+                #前面http，后面https
+                ok = ('百度一下' in content) or ('全球领先的中文搜索引擎' in content)
                 if ok:
                     log.debug(f"Response True content for {proxy}: {len(content_bytes)} bytes, {content[:320]}...")
                     return True
 
-                log.debug(f"Response False content for {proxy}: {len(content_bytes)} bytes, {content[:320]}...")
+                log.debug(f"Response False content for {proxy}: {len(content_bytes)} bytes, {content}...")
                 return False
     except Exception as e:
         log.error(f"Error occurred while validating proxy {proxy}: {type(e).__name__}: {str(e)}")

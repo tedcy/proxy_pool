@@ -34,6 +34,7 @@ class _ThreadFetcher(Thread):
 
     def run(self):
         self.log.info("ProxyFetch - {func}: start".format(func=self.fetch_source))
+        count = 0
         try:
             for proxy in self.fetcher():
                 self.log.info('ProxyFetch - %s: %s ok' % (self.fetch_source, proxy.ljust(23)))
@@ -43,6 +44,8 @@ class _ThreadFetcher(Thread):
                 else:
                     self.proxy_dict[proxy] = Proxy(
                         proxy, source=self.fetch_source)
+                count += 1
+            self.log.info("ProxyFetch - {func}: end, fetched {count} proxies".format(func=self.fetch_source, count=count))
         except Exception as e:
             self.log.error("ProxyFetch - {func}: error".format(func=self.fetch_source))
             self.log.error(str(e))
@@ -82,7 +85,8 @@ class Fetcher(object):
         for thread in thread_list:
             thread.join()
 
-        self.log.info("ProxyFetch - all complete!")
+        total_count = len(proxy_dict)
+        self.log.info("ProxyFetch - all complete! Total fetched: {count} proxies".format(count=total_count))
         for _ in proxy_dict.values():
             if DoValidator.preValidator(_.proxy):
                 yield _

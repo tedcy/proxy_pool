@@ -12,3 +12,4 @@ Flask==1.0;python_version<="3.6"
 werkzeug==2.1.0;python_version>"3.6"
 werkzeug==0.15.5;python_version<="3.6"
 bs4==0.0.2
+quickjs

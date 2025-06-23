@@ -161,8 +161,19 @@ class _AsyncChecker:
         self.proxy_handler = ProxyHandler()
         self.target_queue = target_queue
         self.conf = ConfigHandler()
+        # 用于统计每个来源的代理数量
+        self.total_count_by_source = {}
+        # 用于统计每个来源成功的代理数量
+        self.success_count_by_source = {}
 
     async def check_proxy(self, proxy):
+        # 更新每个来源的总计数
+        for source in proxy._source:
+            if source in self.total_count_by_source:
+                self.total_count_by_source[source] += 1
+            else:
+                self.total_count_by_source[source] = 1
+                
         proxy = await DoValidator.validator(proxy, self.work_type)
         if self.work_type == "raw":
             await self.__ifRaw(proxy)
@@ -176,6 +187,12 @@ class _AsyncChecker:
             else:
                 self.log.info('RawProxyCheck: {} pass'.format(proxy.proxy.ljust(23)))
                 self.proxy_handler.put(proxy)
+                # 更新每个来源的成功计数
+                for source in proxy._source:
+                    if source in self.success_count_by_source:
+                        self.success_count_by_source[source] += 1
+                    else:
+                        self.success_count_by_source[source] = 1
         else:
             self.log.info('RawProxyCheck: {} fail'.format(proxy.proxy.ljust(23)))
 
@@ -183,6 +200,12 @@ class _AsyncChecker:
         if proxy.last_status:
             self.log.info('UseProxyCheck: {} pass'.format(proxy.proxy.ljust(23)))
             self.proxy_handler.put(proxy)
+            # 更新每个来源的成功计数
+            for source in proxy._source:
+                if source in self.success_count_by_source:
+                    self.success_count_by_source[source] += 1
+                else:
+                    self.success_count_by_source[source] = 1
         else:
             if proxy.fail_count > self.conf.maxFailCount():
                 self.log.info('UseProxyCheck: {} fail, count {} delete'.format(
@@ -223,3 +246,18 @@ async def Checker(tp, proxy_queue):
 
         tasks = [safe_check_proxy(proxy, checker, 15) for proxy in batch]
         await asyncio.gather(*tasks)
+    
+    # 打印每个来源的代理数量统计
+    if checker.total_count_by_source:
+        checker.log.info("=" * 50)
+        checker.log.info("代理统计 (按来源):")
+        for source in sorted(checker.total_count_by_source.keys()):
+            total = checker.total_count_by_source.get(source, 0)
+            success = checker.success_count_by_source.get(source, 0)
+            success_rate = (success / total * 100) if total > 0 else 0
+            checker.log.info(f"来源: {source} - 总数: {total}, 成功: {success}, 成功率: {success_rate:.2f}%")
+        checker.log.info("=" * 50)
+        total_all = sum(checker.total_count_by_source.values())
+        success_all = sum(checker.success_count_by_source.values())
+        success_rate_all = (success_all / total_all * 100) if total_all > 0 else 0
+        checker.log.info(f"总计: 总数: {total_all}, 成功: {success_all}, 成功率: {success_rate_all:.2f}%")

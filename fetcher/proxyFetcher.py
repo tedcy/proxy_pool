@@ -144,15 +144,15 @@ class ProxyFetcher(object):
                 yield "%s:%s" % (ip, port)
             sleep(8)
     
-    # @staticmethod
-    # def freeProxy08():
-    #     """ FreeProxyList http://free-proxy-list.net"""
-    #     url = 'http://free-proxy-list.net'
-    #     html_tree = WebRequest().get(url, verify=False).tree
-    #     proxies = html_tree.xpath("//*[@id='raw']/div/div/div[2]/textarea/text()")
-    #     matches = re.findall(r'\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}:\d+', proxies[0])
-    #     for proxy in matches:
-    #         yield proxy
+    @staticmethod
+    def freeProxy08():
+        """ FreeProxyList https://free-proxy-list.net"""
+        url = 'https://free-proxy-list.net'
+        html_tree = WebRequest().get(url, verify=False).tree
+        proxies = html_tree.xpath("//*[@id='raw']/div/div/div[2]/textarea/text()")
+        matches = re.findall(r'\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}:\d+', proxies[0])
+        for proxy in matches:
+            yield proxy
 
     @staticmethod
     def freeProxy09(page_count=8):
@@ -305,54 +305,96 @@ class ProxyFetcher(object):
             if ip and port:
                 yield "%s:%s" % (ip, port)
 
-    # @staticmethod
-    # def freeProxy20():
-    #     """ proxynova """
-    #     def extract_expr(s: str) -> str:
-    #         start = s.find('(') + 1
-    #         end = s.rfind(')')
-    #         if start == 0 or end == -1:
-    #             raise ValueError("无法在字符串中找到匹配的括号")
-    #         return s[start:end]
+    @staticmethod
+    def freeProxy20(use_local_data=False):
+        """ proxynova """
+        def extract_expr(s: str) -> str:
+            start = s.find('(') + 1
+            end = s.rfind(')')
+            if start == 0 or end == -1:
+                raise ValueError("无法在字符串中找到匹配的括号")
+            return s[start:end]
 
-    #     def decode_atob_in_js(js_code: str) -> str:
-    #         """
-    #         将 js_code 中所有 atob("…") 调用替换为对应的解码后字符串，
-    #         比如 atob("NDcuMjU0LjM=") -> "47.254.3"
-    #         """
-    #         # 匹配 atob("…") 并捕获内部的 base64 文本
-    #         pattern = re.compile(r'atob\("([^"]+)"\)')
+        def decode_atob_in_js(js_code: str) -> str:
+            """
+            将 js_code 中所有 atob("…") 调用替换为对应的解码后字符串，
+            比如 atob("NDcuMjU0LjM=") -> "47.254.3"
+            """
+            # 匹配 atob("…") 并捕获内部的 base64 文本
+            pattern = re.compile(r'atob\("([^"]+)"\)')
 
-    #         def _repl(m: re.Match) -> str:
-    #             b64_str = m.group(1)
-    #             try:
-    #                 decoded = base64.b64decode(b64_str).decode('utf-8')
-    #             except Exception:
-    #                 return m.group(0)
-    #             return f'"{decoded}"'
+            def _repl(m: re.Match) -> str:
+                b64_str = m.group(1)
+                try:
+                    decoded = base64.b64decode(b64_str).decode('utf-8')
+                except Exception:
+                    return m.group(0)
+                return f'"{decoded}"'
 
-    #         return pattern.sub(_repl, js_code)
+            return pattern.sub(_repl, js_code)
 
-    #     url = 'https://www.proxynova.com/proxy-server-list/'
-    #     html_tree = WebRequest().get(url, timeout=10).tree
-    #     for tr in html_tree.xpath("//*[@id='tbl_proxy_list']/tbody/tr"):
-    #         js_tree = tr.xpath("./td[1]//script/text()")
-    #         js_code = extract_expr(js_tree[0])
-    #         if 'atob(' in js_code:
-    #             js_code = decode_atob_in_js(js_code)
-    #         ip = ctx.eval(js_code)
-    #         port = "".join(tr.xpath("./td[2]/text()")).strip()
-    #         if ip and port:
-    #             yield "%s:%s" % (ip, port)
+        if use_local_data:
+            # 使用本地数据文件
+            from lxml import etree
+            try:
+                with open('freeProxy20.html', 'r', encoding='utf-8') as f:
+                    content = f.read()
+                html_tree = etree.HTML(content)
+            except Exception as e:
+                print(f"读取本地数据文件失败: {e}")
+                return
+        else:
+            # 使用网络请求
+            url = 'https://www.proxynova.com/proxy-server-list/'
+            html_tree = WebRequest().get(url, timeout=10).tree
+        for tr in html_tree.xpath("//*[@id='tbl_proxy_list']/tbody/tr"):
+            js_tree = tr.xpath("./td[1]//script/text()")
+            js_code = extract_expr(js_tree[0])
+            if 'atob(' in js_code:
+                js_code = decode_atob_in_js(js_code)
+            ip = ctx.eval(js_code)
+            port = "".join(tr.xpath("./td[2]/text()")).strip()
+            if ip and port:
+                yield "%s:%s" % (ip, port)
 
     @staticmethod
-    def freeProxy21(page_count = 2):
+    def freeProxy21(page_count = 2, use_local_data=False):
         """ proxydb """
-        url = 'https://proxydb.net/list'
         for i in range(0, page_count):
-            json = {'protocols': [], 'anonlvls': [], 'offset': i * 30}
-            resp = WebRequest().post(url, json=json, timeout=10).json
-            if "proxies" in resp:
-                proxies = resp["proxies"]
-                for proxy in proxies:
-                    yield "%s:%s" % (proxy['ip'], proxy['port'])
+            if use_local_data:
+                # 使用本地数据文件
+                from lxml import etree
+                try:
+                    with open('freeProxy21.html', 'r', encoding='utf-8') as f:
+                        content = f.read()
+                    html_tree = etree.HTML(content)
+                except Exception as e:
+                    print(f"读取本地数据文件失败: {e}")
+                    return
+            else:
+                url = 'https://proxydb.net/'
+                params = {
+                    'protocol': 'http',
+                    'anonlvl': '4',
+                    'country': '',
+                    'offset': i * 30
+                }
+                html_tree = WebRequest().get(url, params=params, timeout=10).tree
+            
+            # 提取表格中的代理信息
+            for tr in html_tree.xpath("//table[@class='table table-sm table-hover table-striped']/tbody/tr"):
+                # 提取IP地址
+                ip_element = tr.xpath("./td[1]/a/text()")
+                if not ip_element:
+                    continue
+                ip = ip_element[0].strip()
+                
+                # 提取端口
+                port_element = tr.xpath("./td[2]/a/text()")
+                if not port_element:
+                    continue
+                port = port_element[0].strip()
+                
+                # 组合成代理地址
+                if ip and port:
+                    yield "%s:%s" % (ip, port)
